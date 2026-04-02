@@ -1,0 +1,12 @@
+{
+  "ml": {
+    "total_return": 4.94,
+    "sharpe": 0.35,
+    "max_dd": -94.02
+  },
+  "rule": {
+    "total_return": 178.62,
+    "sharpe": 0.43,
+    "max_dd": -88.71
+  }
+}

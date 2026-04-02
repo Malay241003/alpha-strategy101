@@ -1,0 +1,56 @@
+[
+  {
+    "year": 2020,
+    "train_size": 10003,
+    "test_size": 10532,
+    "accuracy": 49.1,
+    "precision": 52.6,
+    "buy_signals": 4590,
+    "avg_return_when_buy": 1.4
+  },
+  {
+    "year": 2021,
+    "train_size": 20156,
+    "test_size": 14646,
+    "accuracy": 50.2,
+    "precision": 53.2,
+    "buy_signals": 5501,
+    "avg_return_when_buy": 2.77
+  },
+  {
+    "year": 2022,
+    "train_size": 33838,
+    "test_size": 18115,
+    "accuracy": 55.6,
+    "precision": 45.4,
+    "buy_signals": 174,
+    "avg_return_when_buy": -0.94
+  },
+  {
+    "year": 2023,
+    "train_size": 51552,
+    "test_size": 18949,
+    "accuracy": 49.8,
+    "precision": 49.9,
+    "buy_signals": 9074,
+    "avg_return_when_buy": 67.91
+  },
+  {
+    "year": 2024,
+    "train_size": 70475,
+    "test_size": 20070,
+    "accuracy": 51.2,
+    "precision": 50.9,
+    "buy_signals": 8226,
+    "avg_return_when_buy": 1.32
+  },
+  {
+    "year": 2025,
+    "train_size": 90227,
+    "test_size": 20527,
+    "accuracy": 51.9,
+    "precision": 43.2,
+    "buy_signals": 6543,
+    "avg_return_when_buy": 1.93
+  }
+]

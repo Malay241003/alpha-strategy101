@@ -1,0 +1,66 @@
+[
+  {
+    "period": "2021_H1",
+    "train_size": 104569,
+    "test_size": 60718,
+    "precision": 56.0,
+    "buy_signals": 16738,
+    "avg_fwd_ret": 1.29
+  },
+  {
+    "period": "2021_H2",
+    "train_size": 165287,
+    "test_size": 61740,
+    "precision": 52.8,
+    "buy_signals": 7847,
+    "avg_fwd_ret": 0.91
+  },
+  {
+    "period": "2022_H1",
+    "train_size": 227027,
+    "test_size": 60816,
+    "precision": 52.8,
+    "buy_signals": 8126,
+    "avg_fwd_ret": 0.28
+  },
+  {
+    "period": "2022_H2",
+    "train_size": 287843,
+    "test_size": 61824,
+    "precision": 53.0,
+    "buy_signals": 3181,
+    "avg_fwd_ret": 0.33
+  },
+  {
+    "period": "2023_H1",
+    "train_size": 349667,
+    "test_size": 60802,
+    "precision": 53.8,
+    "buy_signals": 2144,
+    "avg_fwd_ret": 0.67
+  },
+  {
+    "period": "2023_H2",
+    "train_size": 410469,
+    "test_size": 61824,
+    "precision": 54.5,
+    "buy_signals": 1290,
+    "avg_fwd_ret": 1.12
+  },
+  {
+    "period": "2024_H1",
+    "train_size": 472293,
+    "test_size": 61152,
+    "precision": 57.4,
+    "buy_signals": 2776,
+    "avg_fwd_ret": 0.57
+  },
+  {
+    "period": "2024_H2",
+    "train_size": 533445,
+    "test_size": 61670,
+    "precision": 58.6,
+    "buy_signals": 2331,
+    "avg_fwd_ret": 1.02
+  }
+]
