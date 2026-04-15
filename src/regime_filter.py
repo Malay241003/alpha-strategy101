@@ -110,3 +110,47 @@ def get_regime_summary(regime):
     })
 
     return pd.DataFrame(periods)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# MARKOV CHAIN ADAPTER
+# ═══════════════════════════════════════════════════════════════════════
+
+def compute_regime_markov_adapter(market_data, calibration_end=None):
+    """
+    Compute regime using the Markov Chain HMM.
+
+    Wrapper that calls the Markov model and returns ONLY the regime Series
+    (same signature as compute_regime) for pipeline compatibility.
+
+    The exposure_scores are also returned as a second value for callers
+    that want graduated position sizing.
+
+    Returns:
+        tuple: (regime_series, exposure_scores)
+            - regime_series: pd.Series (same as compute_regime output)
+            - exposure_scores: pd.Series of float [0.0, 1.0]
+    """
+    from src.markov_regime import compute_regime_markov
+    return compute_regime_markov(market_data, calibration_end=calibration_end)
+
+
+def compute_regime_auto(market_data, calibration_end=None):
+    """
+    Unified entry point: selects regime method based on config.MARKOV_REGIME_METHOD.
+
+    Returns:
+        tuple: (regime_series, exposure_scores_or_None)
+            - If method="heuristic": exposure_scores is None (use REGIME_EXPOSURE dict)
+            - If method="markov": exposure_scores is a pd.Series of floats
+    """
+    from config import MARKOV_REGIME_METHOD
+
+    if MARKOV_REGIME_METHOD == "markov":
+        print("🔮 Using Markov Chain HMM regime filter")
+        return compute_regime_markov_adapter(market_data, calibration_end)
+    else:
+        print("📐 Using heuristic (MA + VIX) regime filter")
+        regime = compute_regime(market_data)
+        return regime, None
+

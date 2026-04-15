@@ -138,6 +138,16 @@ REGIME_EXPOSURE = {
 }
 
 # ─────────────────────────────────────────────
+# Markov Chain Regime Model
+# ─────────────────────────────────────────────
+# Method: "heuristic" = old MA+VIX rules, "markov" = Markov Chain HMM
+MARKOV_REGIME_METHOD = "markov"
+
+# Markov model calibration uses data up to IN_SAMPLE_END (no look-ahead)
+# Rolling window for adaptive calibration within the IS period
+MARKOV_CALIBRATION_WINDOW = 252  # 1 year of trading days
+
+# ─────────────────────────────────────────────
 # Risk & R-Multiple Configuration
 # ─────────────────────────────────────────────
 RISK_PER_TRADE_PCT = 0.5    # 0.5% risk per trade (defines 1R)

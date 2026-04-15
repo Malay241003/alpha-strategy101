@@ -293,7 +293,7 @@ def purged_walk_forward_train(features_df, results_dir=None):
         # Predict on test set
         test_df = test_df.copy()
         test_df["prob"] = predict_proba(model, test_df, feature_cols)
-        
+
         # Enforce strict regime block: 0 probability if regime == BEAR (0) or CRISIS (-1)
         test_df.loc[test_df["regime"] <= 0, "prob"] = 0.0
 
