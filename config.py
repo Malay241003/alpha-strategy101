@@ -20,8 +20,8 @@ START_DATE = "2008-01-01"
 END_DATE = "2026-04-01"
 
 # In-sample / Out-of-sample split
-IN_SAMPLE_END = "2019-12-31"   # 2008-2019 = in-sample (tune)
-OUT_SAMPLE_START = "2020-01-01"  # 2020-2025 = out-of-sample (validate)
+IN_SAMPLE_END = "2016-12-31"   # 2008-2016 = in-sample (tune)
+OUT_SAMPLE_START = "2017-01-01"  # 2017-2025 = out-of-sample (validate)
 
 # ─────────────────────────────────────────────
 # Stock Universe — 100 S&P 500 Stocks (Diversified Across Sectors)

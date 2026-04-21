@@ -1,6 +1,12 @@
 """
 alphas.py — 10 selected alpha formulas from the '101 Formulaic Alphas' paper.
 
+NOTE on output scales:
+    Raw alpha scores have very different scales across formulas (e.g. alpha_101
+    is bounded ~[-1,1], while alpha_36 sums 5 ranked terms ~[0,5]).  A
+    neutralize + z-score step is needed before combining alphas into a
+    composite signal.  See the combiner / portfolio construction layer.
+
 Each alpha function takes a dict of panel DataFrames:
     panels = {
         "Open":    DataFrame (dates × tickers),
@@ -25,6 +31,16 @@ from src.operators import (
     sum_, product, stddev, decay_linear,
     sign, log, abs_, signedpower
 )
+
+
+def _require_panel(panels, key):
+    """Retrieve a panel by key with a clear error if missing."""
+    if key not in panels:
+        raise KeyError(
+            f"Required panel '{key}' not found. "
+            f"Available keys: {sorted(panels.keys())}"
+        )
+    return panels[key]
 
 
 def alpha_101(panels):
@@ -56,17 +72,19 @@ def alpha_9(panels):
     ts_min_d1 = ts_min(d1, 5)
     ts_max_d1 = ts_max(d1, 5)
 
-    # Vectorized conditional
-    result = pd.DataFrame(0.0, index=close.index, columns=close.columns)
+    # cond1 and cond2 are mutually exclusive (min>0 implies max>0, max<0
+    # implies min<0), but using np.where avoids any DataFrame boolean-
+    # indexing misalignment risk and is cleaner than triple assignment.
+    cond1 = ts_min_d1 > 0   # all 5 days up   → momentum
+    cond2 = ts_max_d1 < 0   # all 5 days down → momentum
 
-    # Condition 1: min(delta,5) > 0 → all 5 days up → momentum
-    cond1 = ts_min_d1 > 0
-    # Condition 2: max(delta,5) < 0 → all 5 days down → momentum
-    cond2 = ts_max_d1 < 0
-
-    result[cond1] = d1[cond1]
-    result[cond2] = d1[cond2]
-    result[~cond1 & ~cond2] = -1 * d1[~cond1 & ~cond2]
+    result = pd.DataFrame(
+        np.where(cond1, d1, np.where(cond2, d1, -1 * d1)),
+        index=close.index, columns=close.columns,
+    )
+    # Propagate NaN where inputs were NaN (comparisons on NaN yield False,
+    # which would silently map to the default branch instead of NaN).
+    result[d1.isna()] = np.nan
 
     return result
 
@@ -104,8 +122,13 @@ def alpha_23(panels):
     breakout = ma20_high < high  # True when breaking out above avg
     d2_high = delta(high, 2)
 
-    result = pd.DataFrame(0.0, index=high.index, columns=high.columns)
-    result[breakout] = -1 * d2_high[breakout]
+    result = pd.DataFrame(
+        np.where(breakout, -1 * d2_high, 0.0),
+        index=high.index, columns=high.columns,
+    )
+    # Where inputs are NaN the comparison yields False → 0 (flat), which
+    # hides missing data.  Propagate NaN explicitly.
+    result[breakout.isna() | d2_high.isna()] = np.nan
     return result
 
 
@@ -145,14 +168,19 @@ def alpha_7(panels):
     """
     close = panels["Close"]
     volume = panels["Volume"]
-    adv20 = panels["adv20"]
+    adv20 = _require_panel(panels, "adv20")
 
     d7 = delta(close, 7)
     momentum_signal = (-1 * ts_rank(abs_(d7), 60)) * sign(d7)
 
     vol_surge = adv20 < volume
-    result = pd.DataFrame(-1.0, index=close.index, columns=close.columns)
-    result[vol_surge] = momentum_signal[vol_surge]
+    result = pd.DataFrame(
+        np.where(vol_surge, momentum_signal, -1.0),
+        index=close.index, columns=close.columns,
+    )
+    # NaN in adv20 or volume makes vol_surge False → defaults to -1,
+    # which is a real short bias from missing data.  Mask those out.
+    result[vol_surge.isna() | momentum_signal.isna()] = np.nan
 
     return result
 
@@ -197,7 +225,7 @@ def alpha_36(panels):
     volume = panels["Volume"]
     vwap = panels["vwap"]
     returns = panels["returns"]
-    adv20 = panels["adv20"]
+    adv20 = _require_panel(panels, "adv20")
 
     term1 = 2.21 * rank(correlation(close - open_, delay(volume, 1), 15))
     term2 = 0.7 * rank(open_ - close)
@@ -217,6 +245,12 @@ def alpha_19(panels):
       - Sign part: reversal signal based on 7-day return
       - Multiplier: amplified by 250-day cumulative return rank
     Stocks with strong yearly momentum get bigger positions.
+
+    NOTE on redundancy:  (close - delay(close,7)) + delta(close,7) equals
+    2 * delta(close,7) because delta(close,7) ≡ close - delay(close,7).
+    Wrapping in sign() makes the factor of 2 irrelevant (sign is preserved),
+    so the formula is correct but the two-term expression is a no-op.
+    Kept as-is to match the paper exactly.
     """
     close = panels["Close"]
     returns = panels["returns"]
@@ -264,9 +298,11 @@ def compute_all_alphas(panels):
     Compute all 10 selected alphas.
 
     Returns: dict of {alpha_name: DataFrame(dates × tickers)}
+    Raises: RuntimeError if any alpha fails (with all errors collected).
     """
     print("🧮 Computing alphas...")
     alpha_scores = {}
+    errors = {}  # {name: exception} — surface failures instead of hiding them
     for name, func in ALPHA_REGISTRY.items():
         print(f"  Computing {name}...")
         try:
@@ -276,5 +312,13 @@ def compute_all_alphas(panels):
             alpha_scores[name] = score
         except Exception as e:
             print(f"  ❌ Failed to compute {name}: {e}")
+            errors[name] = e
+
+    if errors:
+        err_summary = "; ".join(f"{k}: {v}" for k, v in errors.items())
+        raise RuntimeError(
+            f"{len(errors)} alpha(s) failed to compute: {err_summary}"
+        )
+
     print(f"✅ Computed {len(alpha_scores)} alphas")
     return alpha_scores

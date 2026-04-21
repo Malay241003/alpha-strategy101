@@ -5,7 +5,7 @@ Replaces the fixed-weight scorer.py with a trained ML model that learns
 optimal alpha combinations from data.
 
 Architecture:
-  - Features: 10 alpha ranks + regime + volatility + volume rank + momentum
+  - Features: 10 alpha ranks + regime + volatility + volume rank + momentum + earnings
   - Target: Forward 5-day return > 0 (binary classification)
   - Training: Purged expanding-window walk-forward
     → Train on [start ... year_N], gap 63 days, predict [year_N+1]
@@ -24,7 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
-from config import BULL, NEUTRAL, BEAR, CRISIS
+from config import BULL, NEUTRAL, BEAR, CRISIS, DATA_DIR
+from src.earnings_loader import load_earnings_data, build_earnings_lookup
 import warnings
 import json
 
@@ -47,6 +48,9 @@ def build_features(alpha_scores, panels, regime):
       16.   RSI-like overbought/oversold (14-day)
       17.   Volume trend (volume / 20-day avg volume)
       18.   Distance from 20-day high (how far from recent high)
+      19.   Earnings surprise (last reported surprise %)
+      20.   Days since earnings (trading days since last report, clipped 0-90)
+      21.   Earnings beat streak (consecutive quarters of positive surprise, clipped 0-5)
 
     Args:
         alpha_scores: dict of {alpha_name: DataFrame(dates × tickers)}
@@ -67,6 +71,15 @@ def build_features(alpha_scores, panels, regime):
     high = panels["High"].loc[common_dates]
     volume = panels["Volume"].loc[common_dates]
     tickers = close.columns
+
+    # ── Earnings features (from Alpha Vantage) ──
+    print("  📊 Loading earnings data...")
+    earnings_dict = load_earnings_data(DATA_DIR)
+    earnings_lookup = build_earnings_lookup(
+        earnings_dict, list(tickers),
+        [pd.Timestamp(d) for d in common_dates]
+    )
+    print(f"     Earnings coverage: {len(earnings_lookup)}/{len(tickers)} tickers")
 
     # ── Alpha features (cross-sectional rank) ──
     alpha_features = {}
@@ -137,6 +150,22 @@ def build_features(alpha_scores, panels, regime):
                 row["vol_trend"] = vol_trend.loc[date, ticker]
                 row["dist_from_high"] = dist_from_high.loc[date, ticker]
 
+                # Earnings features
+                if ticker in earnings_lookup:
+                    erow = earnings_lookup[ticker]
+                    if date in erow.index:
+                        row["earnings_surprise"] = erow.loc[date, "earnings_surprise"]
+                        row["days_since_earnings"] = erow.loc[date, "days_since_earnings"]
+                        row["earnings_beat_streak"] = erow.loc[date, "earnings_beat_streak"]
+                    else:
+                        row["earnings_surprise"] = np.nan
+                        row["days_since_earnings"] = np.nan
+                        row["earnings_beat_streak"] = np.nan
+                else:
+                    row["earnings_surprise"] = np.nan
+                    row["days_since_earnings"] = np.nan
+                    row["earnings_beat_streak"] = np.nan
+
                 # Target
                 t_val = target.loc[date, ticker]
                 if pd.isna(t_val):
@@ -150,6 +179,13 @@ def build_features(alpha_scores, panels, regime):
     print(f"  ✅ Feature matrix: {len(df):,} rows × {len(df.columns) - 3} features")
     print(f"     Date range: {valid_dates[0]} → {valid_dates[-1]}")
     print(f"     Target balance: {df['target'].mean()*100:.1f}% positive")
+
+    nan_pct = df.isnull().sum().sum() / (df.shape[0] * df.shape[1])
+    assert nan_pct < 0.02, (
+        f"WARNING: {nan_pct:.1%} NaN in features after join — "
+        f"check date alignment between regime series and alpha_scores. "
+        f"Regime starts later than price data due to 20-day rolling window."
+    )
 
     return df
 

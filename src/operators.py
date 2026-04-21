@@ -173,22 +173,32 @@ def decay_linear(x, d):
 
 # ═══════════════════════════════════════════════
 # BASIC MATH (convenience wrappers)
+# These exist to provide a uniform API that works on scalars, Series,
+# and DataFrames — and to encapsulate edge-case handling (e.g. log(0)).
 # ═══════════════════════════════════════════════
 
 def sign(x):
-    """Element-wise sign: -1, 0, or +1."""
-    if isinstance(x, (pd.DataFrame, pd.Series)):
-        return np.sign(x)
+    """Element-wise sign: -1, 0, or +1. Works on scalars, Series, and DataFrames."""
     return np.sign(x)
 
 
 def log(x):
-    """Element-wise natural logarithm."""
+    """
+    Element-wise natural logarithm.
+
+    Zeros are replaced with NaN *before* taking the log to avoid -inf,
+    since log(0) = -inf would silently corrupt downstream calculations.
+    """
     return np.log(x.replace(0, np.nan))
 
 
 def abs_(x):
-    """Element-wise absolute value."""
+    """
+    Element-wise absolute value.
+
+    Dispatches to pandas .abs() for Series/DataFrame (preserves index/name)
+    and np.abs() for scalars/arrays.
+    """
     return x.abs() if isinstance(x, (pd.DataFrame, pd.Series)) else np.abs(x)
 
 
